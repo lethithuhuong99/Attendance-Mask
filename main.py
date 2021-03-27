@@ -1,7 +1,7 @@
 import os  # accessing the os functions
-from AttendanceProject import Capture_Image
-from AttendanceProject import Train_Image
-from AttendanceProject import Recognize
+from Attendance_mask import Capture_Image
+from Attendance_mask import Train_Image
+from Attendance_mask import Recognize
 
 
 # creating the title bar function
