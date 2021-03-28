@@ -6,7 +6,6 @@ from PIL import Image
 from threading import Thread
 
 
-
 # -------------- image labesl ------------------------
 
 def getImagesAndLabels(path):
@@ -38,10 +37,8 @@ def TrainImages():
     harcascadePath = "haarcascade_frontalface_default.xml"
     detector = cv2.CascadeClassifier(harcascadePath)
     faces, Id = getImagesAndLabels("TrainingImage")
-    Thread(target = recognizer.train(faces, np.array(Id))).start()
+    Thread(target=recognizer.train(faces, np.array(Id))).start()
     # Below line is optional for a visual counter effect
     # Thread(target = counter_img("TrainingImage")).start()
-    recognizer.write("TrainingImageLabel"+os.sep+"Trainner.yml")
+    recognizer.write("TrainingImageLabel" + os.sep + "Trainner.yml")
     print("All Images")
-
-
