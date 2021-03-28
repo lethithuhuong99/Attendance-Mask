@@ -41,6 +41,7 @@ def takeImages():
                 #saving the captured face in the dataset folder TrainingImage
                 cv2.imwrite("TrainingImage" + os.sep +name + "."+Id + '.' +
                             str(sampleNum) + ".jpg", gray[y:y+h, x:x+w])
+                print(str(sampleNum))
                 #display the frame
                 cv2.imshow('frame', img)
             #wait for 100 miliseconds

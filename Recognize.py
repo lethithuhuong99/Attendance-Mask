@@ -127,18 +127,24 @@ def recognize_attendence():
                                 cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
                                             (255, 255, 255), 1,
                                             cv2.LINE_AA)
-                        mask = str(get_className(classIndex))
-                        attendance["Mask"] = mask
+                        if(classIndex == 0):
+                            timeMask = 0
+                            mask = str(get_className(classIndex))
+                            attendance["Mask"] = mask
+                        else:
+                            mask = str(get_className(classIndex))
+                            attendance["Mask"] = mask
+
 
                     font = cv2.FONT_HERSHEY_SIMPLEX
-                    cv2.putText(im, str(TIMER),(200, 250), font, 7, (0, 255, 255),4, cv2.LINE_AA)
+                    cv2.putText(im, str(timeMask),(200, 250), font, 7, (0, 255, 255),4, cv2.LINE_AA)
                     cv2.imshow('Attendance', im)
                     cv2.waitKey(125)
 
                     cur = time.time()
                     if cur - prev >= 1:
                         prev = cur
-                        TIMER = TIMER - 1
+                        timeMask = timeMask - 1
 
         attendance = attendance.drop_duplicates(subset=['Id'], keep='first')
         cv2.imshow('Attendance', im)
