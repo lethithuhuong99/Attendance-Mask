@@ -74,7 +74,7 @@ def recognize_attendence():
                                 (255, 255, 255), 1,
                                 cv2.LINE_AA)
                     print("No Mask")
-            if (100-conf) > 50:
+            if (100-conf) > 70:
                 # lấy tên và id
                 cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 aa = df.loc[df['Id'] == Id]['Name'].values
