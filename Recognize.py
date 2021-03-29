@@ -32,7 +32,7 @@ def recognize_attendence():
     faceCascade = cv2.CascadeClassifier(harcascadePath)
     df = pd.read_csv("StudentDetails"+os.sep+"StudentDetails.csv")
     font = cv2.FONT_HERSHEY_SIMPLEX
-    col_names = ['Id', 'Name', 'Date', 'Time']
+    col_names = ['Id', 'Name', 'Date', 'Time','Mask']
     attendance = pd.DataFrame(columns=col_names)
 
     # Initialize and start realtime video capture
@@ -42,111 +42,78 @@ def recognize_attendence():
     # Define min window size to be recognized as a face
     minW = 0.1 * cam.get(3)
     minH = 0.1 * cam.get(4)
-    isAttendance = False
-    # Thời gian để test khẩu trang
-    timeMask = int(10)
 
-    while True > 0:
+    while True:
         ret, im = cam.read()
         im = cv2.flip(im,1)
         k = cv2.waitKey(125)
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         faces = faceCascade.detectMultiScale(gray, 1.2, 5,minSize = (int(minW), int(minH)),flags = cv2.CASCADE_SCALE_IMAGE)
         for(x, y, w, h) in faces:
-            if(isAttendance == False):
-                Id, conf = recognizer.predict(gray[y:y+h, x:x+w])
-                if (100-conf) > 76:
+            Id, conf = recognizer.predict(gray[y:y+h, x:x+w])
+            crop_img = im[y:y + h, x:x + h]
+            img = cv2.resize(crop_img, (32, 32))
+            img = preprocessing(img)
+            img = img.reshape(1, 32, 32, 1)
+            prediction = model.predict(img)
+            classIndex = model.predict_classes(img)
+            probabilityValue = np.amax(prediction)
 
-                    # lấy tên và id
+            if probabilityValue > threshold:
+                if classIndex == 0:
                     cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    aa = df.loc[df['Id'] == Id]['Name'].values
-                    confstr = "  {0}%".format(round(100 - conf))
-                    tt = str(Id)+"-"+aa
+                    cv2.rectangle(im, (x, y - 40), (x + w, y), (0, 255, 0), -2)
+                    cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
+                                (255, 255, 255), 1,
+                                cv2.LINE_AA)
+                    print("Mask")
+                elif classIndex == 1:
+                    cv2.rectangle(im, (x, y), (x + w, y + h), (50, 50, 255), 2)
+                    cv2.rectangle(im, (x, y - 40), (x + w, y), (50, 50, 255), -2)
+                    cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
+                                (255, 255, 255), 1,
+                                cv2.LINE_AA)
+                    print("No Mask")
+            if (100-conf) > 50:
+                # lấy tên và id
+                cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                aa = df.loc[df['Id'] == Id]['Name'].values
+                confstr = "  {0}%".format(round(100 - conf))
+                tt = str(Id)+"-"+aa
 
-                    #xử lý điểm danh, lưu vào file
+                #xử lý điểm danh, lưu vào file
+                ts = time.time()
+                date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
+                timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
+                aa = str(aa)[2:-2]
+                mask = str(get_className(classIndex))
+                attendance.loc[len(attendance)] = [Id, aa, date, timeStamp,mask]
 
-                    ts = time.time()
-                    date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
-                    timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
-                    aa = str(aa)[2:-2]
-                    attendance.loc[1] = [Id, aa, date, timeStamp]
+                # hiển thị điểm danh thành công
+                tt = tt + " [Pass]"
+                cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 255, 0), 2)
 
-                    # hiển thị điểm danh thành công
-                    tt = tt + " [Pass]"
-                    cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 255, 0), 2)
+                # hiển thị tên người điểm danh
+                cv2.putText(im, str(confstr), (x + 5, y + h - 5), font,1, (0, 255, 0),1 )
+                print("Da diem danh")
 
-                    # hiển thị tên người điểm danh
-                    cv2.putText(im, str(confstr), (x + 5, y + h - 5), font,1, (0, 255, 0),1 )
-                    print("Da diem danh")
-                    isAttendance = True
-
-                else:
-                    print("CHua diem danh")
-                    # không lấy tên và id
-                    cv2.rectangle(im, (x, y), (x + w, y + h), (0, 0, 255), 2)
-                    Id = '  Unknown  '
-                    tt = str(Id)
-                    confstr = "  {0}%".format(round(100 - conf))
-
-                    # điểm danh khong thành công
-                    cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 0, 255), 2)
-
-                    # hiển thị unknown
-                    cv2.putText(im, str(confstr), (x + 5, y + h - 5), font, 1, (0, 0, 255), 1)
-
-                tt = str(tt)[2:-2]
             else:
-                # if k == ord('w'):
-                prev = time.time()
-                while timeMask >= 0:
-                    ret, im = cam.read()
-                    im = cv2.flip(im, 1)
-                    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-                    faces = faceCascade.detectMultiScale(gray, 1.2, 5, minSize=(int(minW), int(minH)),
-                                                         flags=cv2.CASCADE_SCALE_IMAGE)
-                    for (x, y, w, h) in faces:
-                        crop_img = im[y:y + h, x:x + h]
-                        img = cv2.resize(crop_img, (32, 32))
-                        img = preprocessing(img)
-                        img = img.reshape(1, 32, 32, 1)
-                        prediction = model.predict(img)
-                        classIndex = model.predict_classes(img)
-                        probabilityValue = np.amax(prediction)
+                print("CHua diem danh")
+                # không lấy tên và id
+                cv2.rectangle(im, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                Id = '  Unknown  '
+                tt = str(Id)
+                confstr = "  {0}%".format(round(100 - conf))
 
-                        if probabilityValue > threshold:
-                            if classIndex == 0:
-                                cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                                cv2.rectangle(im, (x, y - 40), (x + w, y), (0, 255, 0), -2)
-                                cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
-                                            (255, 255, 255), 1,
-                                            cv2.LINE_AA)
+                # điểm danh khong thành công
+                cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 0, 255), 2)
 
-                            elif classIndex == 1:
-                                cv2.rectangle(im, (x, y), (x + w, y + h), (50, 50, 255), 2)
-                                cv2.rectangle(im, (x, y - 40), (x + w, y), (50, 50, 255), -2)
-                                cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
-                                            (255, 255, 255), 1,
-                                            cv2.LINE_AA)
-                        if(classIndex == 0):
-                            timeMask = 0
-                            mask = str(get_className(classIndex))
-                            attendance["Mask"] = mask
-                        else:
-                            mask = str(get_className(classIndex))
-                            attendance["Mask"] = mask
+                # hiển thị unknown
+                cv2.putText(im, str(confstr), (x + 5, y + h - 5), font, 1, (0, 0, 255), 1)
 
+            tt = str(tt)[2:-2]
 
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    cv2.putText(im, str(timeMask),(200, 250), font, 7, (0, 255, 255),4, cv2.LINE_AA)
-                    cv2.imshow('Attendance', im)
-                    cv2.waitKey(125)
-
-                    cur = time.time()
-                    if cur - prev >= 1:
-                        prev = cur
-                        timeMask = timeMask - 1
-
-        attendance = attendance.drop_duplicates(subset=['Id'], keep='first')
+        attendance = attendance.sort_values(['Id', 'Mask'], ascending=[True,True])
         cv2.imshow('Attendance', im)
 
         if (cv2.waitKey(1) == ord('q')) :
@@ -156,9 +123,8 @@ def recognize_attendence():
     timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
     Hour, Minute, Second = timeStamp.split(":")
     fileName = "Attendance"+os.sep+"Attendance_"+date+"_"+Hour+"-"+Minute+"-"+Second+".csv"
+    attendance = attendance.drop_duplicates(subset=['Id'], keep='first')
     attendance.to_csv(fileName, index=False)
     print("Attendance Successful")
     cam.release()
     cv2.destroyAllWindows()
-
-
