@@ -32,7 +32,7 @@ def recognize_attendence():
     faceCascade = cv2.CascadeClassifier(harcascadePath)
     df = pd.read_csv("StudentDetails"+os.sep+"StudentDetails.csv")
     font = cv2.FONT_HERSHEY_SIMPLEX
-    col_names = ['Id', 'Name', 'Date', 'Time','Mask']
+    col_names = ['Id', 'Name', 'Date','Mask', 'Checkin',  'Checkout']
     attendance = pd.DataFrame(columns=col_names)
 
     # Initialize and start realtime video capture
@@ -43,75 +43,92 @@ def recognize_attendence():
     minW = 0.1 * cam.get(3)
     minH = 0.1 * cam.get(4)
 
+
     while True:
         ret, im = cam.read()
         im = cv2.flip(im,1)
-        k = cv2.waitKey(125)
+        # k = cv2.waitKey(125)
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+        now = datetime.datetime.now()
+        startCheckIn = now.replace(hour=18, minute=33, second=0, microsecond=0)
+        endCheckIn = now.replace(hour=18, minute=33, second=20, microsecond=0)
+        startCheckOut = now.replace(hour=18, minute=33, second=30, microsecond=0)
+        endCheckOut = now.replace(hour=18, minute=34, second=10, microsecond=0)
         faces = faceCascade.detectMultiScale(gray, 1.2, 5,minSize = (int(minW), int(minH)),flags = cv2.CASCADE_SCALE_IMAGE)
-        for(x, y, w, h) in faces:
-            Id, conf = recognizer.predict(gray[y:y+h, x:x+w])
-            crop_img = im[y:y + h, x:x + h]
-            img = cv2.resize(crop_img, (32, 32))
-            img = preprocessing(img)
-            img = img.reshape(1, 32, 32, 1)
-            prediction = model.predict(img)
-            classIndex = model.predict_classes(img)
-            probabilityValue = np.amax(prediction)
+        if((now < endCheckIn and now > startCheckIn) or (now > startCheckOut and now < endCheckOut)):
+            for(x, y, w, h) in faces:
+                Id, conf = recognizer.predict(gray[y:y+h, x:x+w])
+                crop_img = im[y:y + h, x:x + h]
+                img = cv2.resize(crop_img, (32, 32))
+                img = preprocessing(img)
+                img = img.reshape(1, 32, 32, 1)
+                prediction = model.predict(img)
+                classIndex = model.predict_classes(img)
+                probabilityValue = np.amax(prediction)
 
-            if probabilityValue > threshold:
-                if classIndex == 0:
+                if probabilityValue > threshold:
+                    if classIndex == 0:
+                        cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                        cv2.rectangle(im, (x, y - 40), (x + w, y), (0, 255, 0), -2)
+                        cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
+                                    (255, 255, 255), 1,
+                                    cv2.LINE_AA)
+                        print("Mask")
+                    elif classIndex == 1:
+                        cv2.rectangle(im, (x, y), (x + w, y + h), (50, 50, 255), 2)
+                        cv2.rectangle(im, (x, y - 40), (x + w, y), (50, 50, 255), -2)
+                        cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
+                                    (255, 255, 255), 1,
+                                    cv2.LINE_AA)
+                        print("No Mask")
+                if (100-conf) > 70:
+                    # lấy tên và id
                     cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    cv2.rectangle(im, (x, y - 40), (x + w, y), (0, 255, 0), -2)
-                    cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
-                                (255, 255, 255), 1,
-                                cv2.LINE_AA)
-                    print("Mask")
-                elif classIndex == 1:
-                    cv2.rectangle(im, (x, y), (x + w, y + h), (50, 50, 255), 2)
-                    cv2.rectangle(im, (x, y - 40), (x + w, y), (50, 50, 255), -2)
-                    cv2.putText(im, str(get_className(classIndex)), (x, y - 10), font, 0.75,
-                                (255, 255, 255), 1,
-                                cv2.LINE_AA)
-                    print("No Mask")
-            if (100-conf) > 70:
-                # lấy tên và id
-                cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                aa = df.loc[df['Id'] == Id]['Name'].values
-                confstr = "  {0}%".format(round(100 - conf))
-                tt = str(Id)+"-"+aa
+                    aa = df.loc[df['Id'] == Id]['Name'].values
+                    confstr = "  {0}%".format(round(100 - conf))
+                    tt = str(Id)+"-"+aa
 
-                #xử lý điểm danh, lưu vào file
-                ts = time.time()
-                date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
-                timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
-                aa = str(aa)[2:-2]
-                mask = str(get_className(classIndex))
-                attendance.loc[len(attendance)] = [Id, aa, date, timeStamp,mask]
+                    #xử lý điểm danh, lưu vào file
+                    ts = time.time()
+                    date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
+                    timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
+                    aa = str(aa)[2:-2]
+                    mask = str(get_className(classIndex))
+                    if(now < endCheckIn and now > startCheckIn):
+                        print("Da diem danh")
+                        checkout = 'No'
+                        attendance.loc[len(attendance)] = [Id, aa, date, mask ,timeStamp , checkout ]
+                    elif(now > startCheckOut and now < endCheckOut):
+                        print("Da checkout")
+                        id = df.index[df['Id' ] == Id].tolist()
+                        print(id)
+                        # attendance.at[id,'Checkout'] = 'Yes'
+                        # attendance.replace('No','Yes', inplace = True)
 
-                # hiển thị điểm danh thành công
-                tt = tt + " [Pass]"
-                cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 255, 0), 2)
 
-                # hiển thị tên người điểm danh
-                cv2.putText(im, str(confstr), (x + 5, y + h - 5), font,1, (0, 255, 0),1 )
-                print("Da diem danh")
+                    # hiển thị điểm danh thành công
+                    tt = tt + " [Pass]"
+                    cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 255, 0), 2)
 
-            else:
-                print("CHua diem danh")
-                # không lấy tên và id
-                cv2.rectangle(im, (x, y), (x + w, y + h), (0, 0, 255), 2)
-                Id = '  Unknown  '
-                tt = str(Id)
-                confstr = "  {0}%".format(round(100 - conf))
+                    # hiển thị tên người điểm danh
+                    cv2.putText(im, str(confstr), (x + 5, y + h - 5), font,1, (0, 255, 0),1 )
 
-                # điểm danh khong thành công
-                cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 0, 255), 2)
 
-                # hiển thị unknown
-                cv2.putText(im, str(confstr), (x + 5, y + h - 5), font, 1, (0, 0, 255), 1)
+                else:
+                    print("CHua diem danh")
+                    # không lấy tên và id
+                    cv2.rectangle(im, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                    Id = '  Unknown  '
+                    tt = str(Id)
+                    confstr = "  {0}%".format(round(100 - conf))
 
-            tt = str(tt)[2:-2]
+                    # điểm danh khong thành công
+                    cv2.putText(im, str(tt), (x + 5, y - 5), font, 1, (0, 0, 255), 2)
+
+                    # hiển thị unknown
+                    cv2.putText(im, str(confstr), (x + 5, y + h - 5), font, 1, (0, 0, 255), 1)
+
+                tt = str(tt)[2:-2]
 
         attendance = attendance.sort_values(['Id', 'Mask'], ascending=[True,True])
         cv2.imshow('Attendance', im)
