@@ -32,7 +32,7 @@ def recognize_attendence():
     faceCascade = cv2.CascadeClassifier(harcascadePath)
     df = pd.read_csv("StudentDetails"+os.sep+"StudentDetails.csv")
     font = cv2.FONT_HERSHEY_SIMPLEX
-    col_names = ['Id', 'Name', 'Date','Mask', 'Checkin',  'Checkout']
+    col_names = ['Id', 'Name', 'Date','Mask', 'Checkin', 'Checkout']
     attendance = pd.DataFrame(columns=col_names)
 
     # Initialize and start realtime video capture
@@ -43,21 +43,20 @@ def recognize_attendence():
     minW = 0.1 * cam.get(3)
     minH = 0.1 * cam.get(4)
 
-
     while True:
         ret, im = cam.read()
         im = cv2.flip(im,1)
-        # k = cv2.waitKey(125)
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         now = datetime.datetime.now()
-        startCheckIn = now.replace(hour=18, minute=33, second=0, microsecond=0)
-        endCheckIn = now.replace(hour=18, minute=33, second=20, microsecond=0)
-        startCheckOut = now.replace(hour=18, minute=33, second=30, microsecond=0)
-        endCheckOut = now.replace(hour=18, minute=34, second=10, microsecond=0)
+        startCheckIn = now.replace(hour=15, minute=41, second=0, microsecond=0)
+        endCheckIn = now.replace(hour=15, minute=41, second=20, microsecond=0)
+        startCheckOut = now.replace(hour=15, minute=41, second=30, microsecond=0)
+        endCheckOut = now.replace(hour=15, minute=41, second=50, microsecond=0)
         faces = faceCascade.detectMultiScale(gray, 1.2, 5,minSize = (int(minW), int(minH)),flags = cv2.CASCADE_SCALE_IMAGE)
         if((now < endCheckIn and now > startCheckIn) or (now > startCheckOut and now < endCheckOut)):
             for(x, y, w, h) in faces:
                 Id, conf = recognizer.predict(gray[y:y+h, x:x+w])
+
                 crop_img = im[y:y + h, x:x + h]
                 img = cv2.resize(crop_img, (32, 32))
                 img = preprocessing(img)
@@ -96,15 +95,12 @@ def recognize_attendence():
                     mask = str(get_className(classIndex))
                     if(now < endCheckIn and now > startCheckIn):
                         print("Da diem danh")
-                        checkout = 'No'
-                        attendance.loc[len(attendance)] = [Id, aa, date, mask ,timeStamp , checkout ]
+                        checkout = 'no'
+                        attendance.loc[len(attendance)] = [Id, aa, date, mask , timeStamp, checkout ]
                     elif(now > startCheckOut and now < endCheckOut):
                         print("Da checkout")
-                        id = df.index[df['Id' ] == Id].tolist()
-                        print(id)
-                        # attendance.at[id,'Checkout'] = 'Yes'
-                        # attendance.replace('No','Yes', inplace = True)
-
+                        id = attendance.index[attendance['Id'] == Id].tolist()
+                        attendance.at[id,'Checkout'] = 'Yes'
 
                     # hiển thị điểm danh thành công
                     tt = tt + " [Pass]"
@@ -112,7 +108,6 @@ def recognize_attendence():
 
                     # hiển thị tên người điểm danh
                     cv2.putText(im, str(confstr), (x + 5, y + h - 5), font,1, (0, 255, 0),1 )
-
 
                 else:
                     print("CHua diem danh")
