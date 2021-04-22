@@ -8,6 +8,13 @@ import numpy as np
 import cv2
 from tensorflow.keras.models import load_model
 
+import pymongo
+import csv
+
+myclient = pymongo.MongoClient("mongodb+srv://admin:admin123@cluster0.9n8yb.mongodb.net/employees?retryWrites=true&w=majority")
+mydb = myclient['employees']
+mycol = mydb['attendancedbs']
+
 model = load_model('MyTrainingModel.h5')
 threshold=0.90
 
@@ -32,7 +39,7 @@ def recognize_attendence():
     faceCascade = cv2.CascadeClassifier(harcascadePath)
     df = pd.read_csv("StudentDetails"+os.sep+"StudentDetails.csv")
     font = cv2.FONT_HERSHEY_SIMPLEX
-    col_names = ['Id', 'Name', 'Date','Mask', 'Checkin', 'Checkout']
+    col_names = ['Date', 'Id', 'Mask', 'Checkin', 'Checkout']
     attendance = pd.DataFrame(columns=col_names)
 
     # Initialize and start realtime video capture
@@ -48,10 +55,12 @@ def recognize_attendence():
         im = cv2.flip(im,1)
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         now = datetime.datetime.now()
-        startCheckIn = now.replace(hour=15, minute=41, second=0, microsecond=0)
-        endCheckIn = now.replace(hour=15, minute=41, second=20, microsecond=0)
-        startCheckOut = now.replace(hour=15, minute=41, second=30, microsecond=0)
-        endCheckOut = now.replace(hour=15, minute=41, second=50, microsecond=0)
+        hour = 15
+        minute = 24
+        startCheckIn = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        endCheckIn = now.replace(hour=hour, minute=minute, second=20, microsecond=0)
+        startCheckOut = now.replace(hour=hour, minute=minute, second=30, microsecond=0)
+        endCheckOut = now.replace(hour=hour, minute=minute, second=50, microsecond=0)
         faces = faceCascade.detectMultiScale(gray, 1.2, 5,minSize = (int(minW), int(minH)),flags = cv2.CASCADE_SCALE_IMAGE)
         if((now < endCheckIn and now > startCheckIn) or (now > startCheckOut and now < endCheckOut)):
             for(x, y, w, h) in faces:
@@ -80,7 +89,7 @@ def recognize_attendence():
                                     (255, 255, 255), 1,
                                     cv2.LINE_AA)
                         print("No Mask")
-                if (100-conf) > 70:
+                if (100-conf) > 50:
                     # lấy tên và id
                     cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
                     aa = df.loc[df['Id'] == Id]['Name'].values
@@ -91,12 +100,12 @@ def recognize_attendence():
                     ts = time.time()
                     date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
                     timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
-                    aa = str(aa)[2:-2]
+                    aa = str(aa)[2:-2] #name employee
                     mask = str(get_className(classIndex))
                     if(now < endCheckIn and now > startCheckIn):
                         print("Da diem danh")
                         checkout = 'no'
-                        attendance.loc[len(attendance)] = [Id, aa, date, mask , timeStamp, checkout ]
+                        attendance.loc[len(attendance)] = [ date, Id, mask , timeStamp, checkout ]
                     elif(now > startCheckOut and now < endCheckOut):
                         print("Da checkout")
                         id = attendance.index[attendance['Id'] == Id].tolist()
@@ -129,7 +138,9 @@ def recognize_attendence():
         cv2.imshow('Attendance', im)
 
         if (cv2.waitKey(1) == ord('q')) :
+        # if (now > endCheckOut):
             break
+
     ts = time.time()
     date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
     timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
@@ -137,6 +148,32 @@ def recognize_attendence():
     fileName = "Attendance"+os.sep+"Attendance_"+date+"_"+Hour+"-"+Minute+"-"+Second+".csv"
     attendance = attendance.drop_duplicates(subset=['Id'], keep='first')
     attendance.to_csv(fileName, index=False)
+
+    print(fileName)
+    with open(fileName) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        line_count = 0
+        attendanceList = []
+
+        for row in csv_reader:
+            if line_count == 0:
+                print(f'Column names are {", ".join(row)}')
+                line_count += 1
+            else:
+                attendanceDetail = {
+                    "date": row[0],
+                    "userId": row[1],
+                    "mask": row[2],
+                    "checkIn": row[3],
+                    "checkOut": row[4],
+                }
+                attendanceList.append(attendanceDetail)
+                line_count += 1
+        print(f'Processed {line_count} lines.')
+    if(attendanceList!=[]):
+        x = mycol.insert_many(attendanceList)
+
+
     print("Attendance Successful")
     cam.release()
     cv2.destroyAllWindows()
