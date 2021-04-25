@@ -55,8 +55,8 @@ def recognize_attendence():
         im = cv2.flip(im,1)
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         now = datetime.datetime.now()
-        hour = 15
-        minute = 24
+        hour = 21
+        minute = 12
         startCheckIn = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         endCheckIn = now.replace(hour=hour, minute=minute, second=20, microsecond=0)
         startCheckOut = now.replace(hour=hour, minute=minute, second=30, microsecond=0)
@@ -92,19 +92,19 @@ def recognize_attendence():
                 if (100-conf) > 50:
                     # lấy tên và id
                     cv2.rectangle(im, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    aa = df.loc[df['Id'] == Id]['Name'].values
+                    # aa = df.loc[df['Id'] == Id]['Name'].values
                     confstr = "  {0}%".format(round(100 - conf))
-                    tt = str(Id)+"-"+aa
+                    tt = str(Id)
 
                     #xử lý điểm danh, lưu vào file
                     ts = time.time()
                     date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
                     timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
-                    aa = str(aa)[2:-2] #name employee
+                    # aa = str(aa)[2:-2] #name employee
                     mask = str(get_className(classIndex))
                     if(now < endCheckIn and now > startCheckIn):
                         print("Da diem danh")
-                        checkout = 'no'
+                        checkout = 'No'
                         attendance.loc[len(attendance)] = [ date, Id, mask , timeStamp, checkout ]
                     elif(now > startCheckOut and now < endCheckOut):
                         print("Da checkout")

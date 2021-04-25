@@ -21,9 +21,8 @@ def is_number(s):
 
 def takeImages():
     Id = input("Enter Your Id: ")
-    name = input("Enter Your Name: ")
 
-    if(is_number(Id) and name.isalpha()):
+    if(is_number(Id)):
         cam = cv2.VideoCapture(0)
         harcascadePath = "haarcascade_frontalface_default.xml"
         detector = cv2.CascadeClassifier(harcascadePath)
@@ -39,7 +38,7 @@ def takeImages():
                 #incrementing sample number
                 sampleNum = sampleNum+1
                 #saving the captured face in the dataset folder TrainingImage
-                cv2.imwrite("TrainingImage" + os.sep +name + "."+Id + '.' +
+                cv2.imwrite("TrainingImage" + os.sep +Id + '.' +
                             str(sampleNum) + ".jpg", gray[y:y+h, x:x+w])
                 print(str(sampleNum))
                 #display the frame
@@ -52,8 +51,8 @@ def takeImages():
                 break
         cam.release()
         cv2.destroyAllWindows()
-        res = "Images Saved for ID : " + Id + " Name : " + name
-        row = [Id, name]
+        res = "Images Saved for ID : " + Id
+        row = [Id]
         with open("StudentDetails"+os.sep+"StudentDetails.csv", 'a+') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerow(row)
@@ -61,7 +60,5 @@ def takeImages():
     else:
         if(is_number(Id)):
             print("Enter Alphabetical Name")
-        if(name.isalpha()):
-            print("Enter Numeric ID")
 
 

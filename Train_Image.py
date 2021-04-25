@@ -25,7 +25,7 @@ def getImagesAndLabels(path):
         # Now we are converting the PIL image into numpy array
         imageNp = np.array(pilImage, 'uint8')
         # getting the Id from the image
-        Id = int(os.path.split(imagePath)[-1].split(".")[1])
+        Id = int(os.path.split(imagePath)[-1].split(".")[0])
         # extract the face from the training image sample
         faces.append(imageNp)
         Ids.append(Id)
